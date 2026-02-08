@@ -18,6 +18,67 @@ export const OPENROUTER_FREE_MODELS = [
     { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini (Free)' },
 ];
 
+/**
+ * Tool Definition for Excel Actions
+ */
+const EXCEL_TOOLS = [
+    {
+        function: {
+            name: "execute_excel_operations",
+            description: "Execute batch operations on the Excel sheet (edit cells, write formulas, format, create tables/charts)",
+            parameters: {
+                type: "object",
+                properties: {
+                    operations: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                action: {
+                                    type: "string",
+                                    enum: ["setCellValue", "setFormula", "format", "createTable", "createChart"],
+                                    description: "The action to perform"
+                                },
+                                address: {
+                                    type: "string",
+                                    description: "Target cell or range address (e.g., 'A1', 'B2:C5')"
+                                },
+                                value: {
+                                    type: "string",
+                                    description: "Value to write (for setCellValue)"
+                                },
+                                formula: {
+                                    type: "string",
+                                    description: "Formula to write (for setFormula), must start with ="
+                                },
+                                format: {
+                                    type: "object",
+                                    description: "Format options",
+                                    properties: {
+                                        bold: { type: "boolean" },
+                                        fill: { type: "string" },
+                                        color: { type: "string" }
+                                    }
+                                },
+                                name: {
+                                    type: "string",
+                                    description: "Name for table or chart"
+                                },
+                                title: {
+                                    type: "string",
+                                    description: "Title for chart"
+                                }
+                            },
+                            required: ["action", "address"]
+                        }
+                    }
+                },
+                required: ["operations"]
+            }
+        }
+    }
+];
+
 // System prompt for Excel expertise
 const EXCEL_SYSTEM_PROMPT = `You are an expert Excel AI assistant embedded in a Microsoft Excel add-in. You help users analyze data, create formulas, build models, and manipulate spreadsheets.
 
@@ -55,24 +116,12 @@ CRITICAL REQUIREMENTS:
    - Protect user data by warning about destructive operations
    - Suggest multiple approaches when relevant
    - Explain complex formulas step by step
-
-6. PERFORMING ACTIONS:
-   - When the user asks to edit the sheet, create tables, or write formulas, you MUST generate a JSON block.
-   - Use the \`excel-json\` language identifier.
-   - Format:
-     \`\`\`excel-json
-     {
-       "operations": [
-         { "action": "setCellValue", "address": "A1", "value": "Header" },
-         { "action": "setFormula", "address": "B1", "formula": "=SUM(A1:A10)" },
-         { "action": "format", "address": "A1:C1", "format": { "bold": true, "fill": "#FFFF00" } },
-         { "action": "createTable", "address": "A1:C5", "name": "SalesTable" }
-       ]
-     }
-     \`\`\`
-   - Supported actions: setCellValue, setFormula, format, createTable, createChart.
-   - ALWAYS explain what you are doing before or after the code block.
 `;
+
+export interface LLMResponse {
+    text: string;
+    toolCalls?: any[];
+}
 
 export class LLMService {
     /**
@@ -81,14 +130,13 @@ export class LLMService {
     static async chat(
         messages: ChatMessage[],
         excelContext?: string
-    ): Promise<string> {
+    ): Promise<LLMResponse> {
         const settings = StorageService.getSettings();
 
         if (!settings.apiKey) {
             throw new Error('Please configure your API key in Settings');
         }
 
-        // Build the full message array with system prompt
         const fullMessages: ChatMessage[] = [
             {
                 role: 'system',
@@ -101,22 +149,25 @@ export class LLMService {
             case 'openrouter':
                 return await this.callOpenRouter(fullMessages, settings.apiKey, settings.model);
             case 'gemini':
-                return await this.callGemini(messages, settings.apiKey, excelContext);
+                return await this.callGemini(messages, settings.apiKey, excelContext); // Gemini handles context differently
             case 'huggingface':
-                return await this.callHuggingFace(messages, settings.apiKey, excelContext);
+                // HuggingFace implementation typically doesn't support tools easily in this setup
+                // Fallback to text
+                const text = await this.callHuggingFace(messages, settings.apiKey, excelContext);
+                return { text };
             default:
                 throw new Error(`Unknown provider: ${settings.provider}`);
         }
     }
 
     /**
-     * Call OpenRouter API
+     * Call OpenRouter API with Tools
      */
     private static async callOpenRouter(
         messages: ChatMessage[],
         apiKey: string,
         model: string
-    ): Promise<string> {
+    ): Promise<LLMResponse> {
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
@@ -128,6 +179,8 @@ export class LLMService {
             body: JSON.stringify({
                 model: model,
                 messages: messages,
+                tools: EXCEL_TOOLS.map(t => ({ type: "function", function: t.function })),
+                tool_choice: "auto",
                 temperature: 0.7,
                 max_tokens: 2000,
             }),
@@ -139,19 +192,28 @@ export class LLMService {
         }
 
         const data = await response.json();
-        return data.choices[0].message.content;
+        const choice = data.choices[0];
+        const message = choice.message;
+
+        return {
+            text: message.content || '',
+            toolCalls: message.tool_calls ? message.tool_calls.map((tc: any) => ({
+                name: tc.function.name,
+                arguments: JSON.parse(tc.function.arguments)
+            })) : undefined
+        };
     }
 
     /**
-     * Call Google Gemini API
+     * Call Google Gemini API with Tools
      */
     private static async callGemini(
         messages: ChatMessage[],
         apiKey: string,
         excelContext?: string
-    ): Promise<string> {
-        // Build prompt from messages
+    ): Promise<LLMResponse> {
         let prompt = EXCEL_SYSTEM_PROMPT;
+
         if (excelContext) {
             prompt += `\n\n${excelContext}`;
         }
@@ -163,6 +225,10 @@ export class LLMService {
         });
 
         prompt += 'Assistant:';
+
+        const tools = [{
+            function_declarations: [EXCEL_TOOLS[0].function]
+        }];
 
         const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
@@ -177,6 +243,7 @@ export class LLMService {
                             parts: [{ text: prompt }],
                         },
                     ],
+                    tools: tools,
                     generationConfig: {
                         temperature: 0.7,
                         maxOutputTokens: 2000,
@@ -191,7 +258,25 @@ export class LLMService {
         }
 
         const data = await response.json();
-        return data.candidates[0].content.parts[0].text;
+        const candidate = data.candidates[0];
+        const parts = candidate.content.parts;
+
+        let text = '';
+        let toolCalls = [];
+
+        for (const part of parts) {
+            if (part.text) text += part.text;
+            if (part.functionCall) {
+                // Gemini returns args as detailed object, or potentially just simpler object?
+                // V1Beta usually returns 'args' as object directly
+                toolCalls.push({
+                    name: part.functionCall.name,
+                    arguments: part.functionCall.args
+                });
+            }
+        }
+
+        return { text, toolCalls: toolCalls.length > 0 ? toolCalls : undefined };
     }
 
     /**
@@ -284,7 +369,7 @@ export class LLMService {
     static async testConnection(): Promise<boolean> {
         try {
             const response = await this.chat([{ role: 'user', content: 'Say "Hello"' }]);
-            return response.length > 0;
+            return !!response.text;
         } catch {
             return false;
         }

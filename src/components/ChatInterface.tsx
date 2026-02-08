@@ -132,22 +132,44 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
             // Call LLM
             const response = await LLMService.chat(chatHistory, excelContext);
 
-            // Parse response for actions
-            const actionsData = extractExcelActions(response);
-            const cleanResponse = response.replace(/```excel-json[\s\S]*?```/, '').trim();
+            // Handle Tool Calls
+            let assistantContent = response.text || '';
+            const toolCalls = response.toolCalls;
+
+            if (toolCalls && toolCalls.length > 0) {
+                // Flatten operations from all tool calls
+                const allOperations = toolCalls.flatMap(tc => {
+                    // OpenRouter/Gemini might return args as object or string
+                    // We already parsed it in service if possible, but double check
+                    if (tc.name === 'execute_excel_operations') {
+                        return tc.arguments.operations || [];
+                    }
+                    return [];
+                });
+
+                if (allOperations.length > 0) {
+                    setPendingActions(allOperations);
+                    if (!assistantContent) {
+                        assistantContent = "I have prepared the changes for you. Please review and apply them.";
+                    }
+                }
+            }
+
+            // Older JSON fallback (just in case model refuses to use tools)
+            const actionsData = extractExcelActions(assistantContent);
+            if (actionsData && actionsData.operations) {
+                setPendingActions(actionsData.operations);
+                assistantContent = assistantContent.replace(/```excel-json[\s\S]*?```/, '').trim() || "I have prepared the changes for you.";
+            }
 
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: cleanResponse || (actionsData ? 'I have prepared the changes for you.' : response),
+                content: assistantContent,
                 timestamp: new Date(),
             };
 
             setMessages((prev) => [...prev, assistantMessage]);
-
-            if (actionsData && actionsData.operations) {
-                setPendingActions(actionsData.operations);
-            }
 
         } catch (err: any) {
             setError(err.message || 'Failed to get response');
