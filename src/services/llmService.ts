@@ -56,6 +56,22 @@ CRITICAL REQUIREMENTS:
    - Suggest multiple approaches when relevant
    - Explain complex formulas step by step
 
+6. PERFORMING ACTIONS:
+   - When the user asks to edit the sheet, create tables, or write formulas, you MUST generate a JSON block.
+   - Use the \`excel-json\` language identifier.
+   - Format:
+     \`\`\`excel-json
+     {
+       "operations": [
+         { "action": "setCellValue", "address": "A1", "value": "Header" },
+         { "action": "setFormula", "address": "B1", "formula": "=SUM(A1:A10)" },
+         { "action": "format", "address": "A1:C1", "format": { "bold": true, "fill": "#FFFF00" } },
+         { "action": "createTable", "address": "A1:C5", "name": "SalesTable" }
+       ]
+     }
+     \`\`\`
+   - Supported actions: setCellValue, setFormula, format, createTable, createChart.
+   - ALWAYS explain what you are doing before or after the code block.
 `;
 
 export class LLMService {

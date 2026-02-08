@@ -4,6 +4,7 @@ import {
     Stack,
     TextField,
     PrimaryButton,
+    DefaultButton,
     Spinner,
     SpinnerSize,
     MessageBar,
@@ -25,11 +26,26 @@ interface ChatInterfaceProps {
     onOpenSettings: () => void;
 }
 
+// Helper to extract JSON from response
+const extractExcelActions = (content: string): any | null => {
+    const match = content.match(/```excel-json\s*([\s\S]*?)```/);
+    if (match && match[1]) {
+        try {
+            return JSON.parse(match[1]);
+        } catch (e) {
+            console.error('Failed to parse Excel actions', e);
+        }
+    }
+    return null;
+};
+
 const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [pendingActions, setPendingActions] = useState<any[]>([]);
+    const [executingActions, setExecutingActions] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Load messages on mount
@@ -55,7 +71,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
     // Auto-scroll to bottom
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [messages, pendingActions, isLoading]);
+
+    const handleApplyActions = async () => {
+        if (pendingActions.length === 0) return;
+
+        setExecutingActions(true);
+        try {
+            await ExcelService.executeOperations(pendingActions);
+
+            // Add success message
+            const successMsg: Message = {
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: '✅ Changes applied successfully!',
+                timestamp: new Date()
+            };
+            setMessages(prev => [...prev, successMsg]);
+            setPendingActions([]);
+        } catch (error: any) {
+            setError('Failed to apply changes: ' + error.message);
+        } finally {
+            setExecutingActions(false);
+        }
+    };
 
     const sendMessage = async () => {
         if (!input.trim() || isLoading) return;
@@ -77,6 +116,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
         setInput('');
         setError(null);
         setIsLoading(true);
+        setPendingActions([]); // Clear previous pending actions
 
         try {
             // Get Excel context
@@ -92,14 +132,23 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
             // Call LLM
             const response = await LLMService.chat(chatHistory, excelContext);
 
+            // Parse response for actions
+            const actionsData = extractExcelActions(response);
+            const cleanResponse = response.replace(/```excel-json[\s\S]*?```/, '').trim();
+
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: response,
+                content: cleanResponse || (actionsData ? 'I have prepared the changes for you.' : response),
                 timestamp: new Date(),
             };
 
             setMessages((prev) => [...prev, assistantMessage]);
+
+            if (actionsData && actionsData.operations) {
+                setPendingActions(actionsData.operations);
+            }
+
         } catch (err: any) {
             setError(err.message || 'Failed to get response');
         } finally {
@@ -116,6 +165,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
 
     const clearChat = () => {
         setMessages([]);
+        setPendingActions([]);
         StorageService.clearMessages();
     };
 
@@ -172,6 +222,30 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
                         Settings
                     </a>{' '}
                     to start chatting.
+                </MessageBar>
+            )}
+
+            {/* Pending Actions Banner */}
+            {pendingActions.length > 0 && (
+                <MessageBar
+                    messageBarType={MessageBarType.success}
+                    actions={
+                        <div>
+                            <PrimaryButton
+                                text={executingActions ? "Applying..." : "Apply Changes"}
+                                onClick={handleApplyActions}
+                                disabled={executingActions}
+                            />
+                            <DefaultButton
+                                text="Discard"
+                                onClick={() => setPendingActions([])}
+                                disabled={executingActions}
+                                styles={{ root: { marginLeft: 10 } }}
+                            />
+                        </div>
+                    }
+                >
+                    <b>AI suggested {pendingActions.length} changes.</b> Click Apply to update your sheet.
                 </MessageBar>
             )}
 

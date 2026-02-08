@@ -246,6 +246,59 @@ export class ExcelService {
 
         return context;
     }
+
+    /**
+     * Execute a batch of operations from the LLM
+     */
+    static async executeOperations(operations: any[]): Promise<void> {
+        if (!this.isExcelAvailable()) {
+            console.log('Simulating Excel operations:', operations);
+            return;
+        }
+
+        return await Excel.run(async (context) => {
+            const sheet = context.workbook.worksheets.getActiveWorksheet();
+
+            for (const op of operations) {
+                try {
+                    switch (op.action) {
+                        case 'setCellValue':
+                            const cellScale = sheet.getRange(op.address);
+                            cellScale.values = [[op.value]];
+                            break;
+
+                        case 'setFormula':
+                            const cellFormula = sheet.getRange(op.address);
+                            cellFormula.formulas = [[op.formula]];
+                            break;
+
+                        case 'format':
+                            const range = sheet.getRange(op.address);
+                            if (op.format.bold !== undefined) range.format.font.bold = op.format.bold;
+                            if (op.format.fill) range.format.fill.color = op.format.fill;
+                            if (op.format.color) range.format.font.color = op.format.color;
+                            break;
+
+                        case 'createTable':
+                            const table = sheet.tables.add(op.address, true);
+                            if (op.name) table.name = op.name;
+                            break;
+
+                        case 'createChart':
+                            // Basic chart implementation
+                            const chartSourceRange = sheet.getRange(op.address);
+                            const chart = sheet.charts.add(op.chartType || 'ColumnClustered', chartSourceRange, 'Auto');
+                            if (op.title) chart.title.text = op.title;
+                            break;
+                    }
+                } catch (e) {
+                    console.error(`Failed to execute operation ${op.action} on ${op.address}`, e);
+                }
+            }
+
+            await context.sync();
+        });
+    }
 }
 
 export default ExcelService;
