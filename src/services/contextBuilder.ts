@@ -25,15 +25,14 @@ export class ContextBuilder {
         return await Excel.run(async (context) => {
             const workbook = context.workbook;
             const sheets = workbook.worksheets;
-            sheets.load("items/name, items/visibility");
-
             const tables = workbook.tables;
-            tables.load("items/name, items/worksheet, items/range");
-
             const names = workbook.names;
-            names.load("items/name, items/formula");
-
             const activeSheet = workbook.worksheets.getActiveWorksheet();
+
+            // Load properties on collections and objects
+            sheets.load("items/name, items/visibility");
+            tables.load("items/name");
+            names.load("items/name, items/formula");
             activeSheet.load("name");
 
             await context.sync();
@@ -45,30 +44,38 @@ export class ContextBuilder {
                 activeSheet: activeSheet.name
             };
 
-            for (const sheet of sheets.items) {
-                // For row/column count, we'd need to load the used range per sheet
-                // To keep it fast, we'll just list names for now
-                metadata.sheets.push({
-                    name: sheet.name,
-                    rowCount: 0, // Placeholder
-                    columnCount: 0, // Placeholder
-                    visibility: sheet.visibility
-                });
+            // Safely iterate sheets
+            if (sheets.items) {
+                for (let i = 0; i < sheets.items.length; i++) {
+                    const s = sheets.items[i];
+                    metadata.sheets.push({
+                        name: s.name,
+                        rowCount: 0,
+                        columnCount: 0,
+                        visibility: s.visibility
+                    });
+                }
             }
 
-            for (const table of tables.items) {
-                metadata.tables.push({
-                    name: table.name,
-                    sheet: "Unknown",
-                    range: "Unknown"
-                });
+            // Safely iterate tables
+            if (tables.items) {
+                for (let i = 0; i < tables.items.length; i++) {
+                    metadata.tables.push({
+                        name: tables.items[i].name,
+                        sheet: "Unknown",
+                        range: "Unknown"
+                    });
+                }
             }
 
-            for (const name of names.items) {
-                metadata.namedRanges.push({
-                    name: name.name,
-                    formula: name.formula
-                });
+            // Safely iterate named ranges
+            if (names.items) {
+                for (let i = 0; i < names.items.length; i++) {
+                    metadata.namedRanges.push({
+                        name: names.items[i].name,
+                        formula: names.items[i].formula
+                    });
+                }
             }
 
             return metadata;

@@ -126,16 +126,29 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
 
             // Get active sheet data (existing logic)
             let excelContext = "";
+            let sheetName = "Unknown";
+            let rangeAddress = "Unknown";
+            let rangeValues = "[[]]";
+            let rangeFormulas = "[[]]";
+
             await Excel.run(async (context) => {
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
-                const range = sheet.getUsedRange();
+                const range = sheet.getUsedRangeOrNullObject(); // Safer
                 sheet.load("name");
                 range.load("values, formulas, address");
+
                 await context.sync();
 
-                excelContext = ContextBuilder.buildContextString(workbookMetadata,
-                    `Sheet: ${sheet.name}\nRange: ${range.address}\nData: ${JSON.stringify(range.values)}\nFormulas: ${JSON.stringify(range.formulas)}`);
+                sheetName = sheet.name;
+                if (!range.isNullObject) {
+                    rangeAddress = range.address;
+                    rangeValues = JSON.stringify(range.values);
+                    rangeFormulas = JSON.stringify(range.formulas);
+                }
             });
+
+            excelContext = ContextBuilder.buildContextString(workbookMetadata,
+                `Sheet: ${sheetName}\nRange: ${rangeAddress}\nData: ${rangeValues}\nFormulas: ${rangeFormulas}`);
 
             // Call LLM
             const response = await LLMService.chat(
