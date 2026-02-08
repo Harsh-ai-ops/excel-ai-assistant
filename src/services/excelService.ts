@@ -256,160 +256,114 @@ export class ExcelService {
             return;
         }
 
-        return await Excel.run(async (context) => {
-            const sheet = context.workbook.worksheets.getActiveWorksheet();
+        console.log("Executing operations sequentially:", operations);
 
-            for (const op of operations) {
-                try {
+        for (const op of operations) {
+            try {
+                await Excel.run(async (context) => {
+                    const sheet = context.workbook.worksheets.getActiveWorksheet();
+
                     switch (op.action) {
                         case 'setCellValue':
-                            const cellScale = sheet.getRange(op.address);
-                            cellScale.values = [[op.value]];
+                            sheet.getRange(op.address).values = [[op.value]];
                             break;
 
                         case 'setFormula':
-                            const cellFormula = sheet.getRange(op.address);
-                            cellFormula.formulas = [[op.formula]];
+                            sheet.getRange(op.address).formulas = [[op.formula]];
                             break;
 
                         case 'format':
-                            const range = sheet.getRange(op.address);
-                            if (op.format.bold !== undefined) range.format.font.bold = op.format.bold;
-                            if (op.format.fill) range.format.fill.color = op.format.fill;
-                            if (op.format.color) range.format.font.color = op.format.color;
+                            const formatRange = sheet.getRange(op.address);
+                            if (op.format.bold !== undefined) formatRange.format.font.bold = op.format.bold;
+                            if (op.format.fill) formatRange.format.fill.color = op.format.fill;
+                            if (op.format.color) formatRange.format.font.color = op.format.color;
+                            if (op.format.fontSize) formatRange.format.font.size = op.format.fontSize;
+                            if (op.format.horizontalAlignment) {
+                                formatRange.format.horizontalAlignment = op.format.horizontalAlignment as any;
+                            }
                             break;
 
                         case 'createTable':
-                            const table = sheet.tables.add(op.address, true);
-                            if (op.name) table.name = op.name;
+                            sheet.tables.add(op.address, true);
                             break;
 
                         case 'createChart':
-                            // Basic chart implementation
-                            const chartSourceRange = sheet.getRange(op.address);
-                            const chart = sheet.charts.add(op.chartType || 'ColumnClustered', chartSourceRange, 'Auto');
-                            if (op.title) chart.title.text = op.title;
+                            sheet.charts.add(op.chartType || 'ColumnClustered', sheet.getRange(op.address), 'Auto');
                             break;
 
                         case 'createWorksheet':
-                            try {
-                                const newSheet = context.workbook.worksheets.add(op.name);
-                                if (op.activate) newSheet.activate();
-                            } catch (e) {
-                                console.warn(`Sheet ${op.name} might already exist`);
-                            }
+                            context.workbook.worksheets.add(op.name);
                             break;
 
                         case 'activateWorksheet':
-                            const sheetToActivate = context.workbook.worksheets.getItem(op.name);
-                            sheetToActivate.activate();
+                            context.workbook.worksheets.getItem(op.name).activate();
                             break;
 
                         case 'deleteWorksheet':
-                            const sheetToDelete = context.workbook.worksheets.getItem(op.name);
-                            sheetToDelete.delete();
+                            context.workbook.worksheets.getItem(op.name).delete();
                             break;
 
                         case 'autoFit':
-                            // Auto-fit columns in range or used range
-                            const autoFitRange = op.address ? sheet.getRange(op.address) : sheet.getUsedRange();
-                            autoFitRange.getEntireColumn().format.autofitColumns();
+                            const afRange = op.address ? sheet.getRange(op.address) : sheet.getUsedRange();
+                            afRange.getEntireColumn().format.autofitColumns();
                             break;
 
                         case 'sortRange':
-                            const sortRange = sheet.getRange(op.address);
-                            const sortFields = [
+                            sheet.getRange(op.address).sort.apply([
                                 {
-                                    key: op.key || 0, // Column index (0-based) relative to range, or 0 if not specified
-                                    ascending: op.ascending !== false // Default true
+                                    key: op.key || 0,
+                                    ascending: op.ascending !== false,
                                 }
-                            ];
-                            sortRange.sort.apply(sortFields, op.matchCase || false, op.hasHeaders || true, op.orientation || "Rows");
+                            ]);
                             break;
 
                         case 'filterRange':
-                            // Apply auto-filter to a range
-                            const filterRange = sheet.getRange(op.address);
-                            sheet.autoFilter.apply(filterRange);
+                            sheet.autoFilter.apply(sheet.getRange(op.address));
                             break;
 
                         case 'createPivotTable':
-                            try {
-                                const sourceSheet = op.sourceSheet ? context.workbook.worksheets.getItem(op.sourceSheet) : sheet;
-                                const sourceRange = sourceSheet.getRange(op.sourceAddress);
-
-                                const destSheet = op.destinationSheet ? context.workbook.worksheets.getItem(op.destinationSheet) : sheet;
-                                // Add Pivot Table - Needs Name, Source, and Destination
-                                const pivotTableName = op.name || `PivotTable_${Date.now()}`;
-                                const pivotTable = destSheet.pivotTables.add(pivotTableName, sourceRange, op.destinationAddress || "A1");
-
-                                if (op.name) pivotTable.name = op.name;
-
-                                // Configure Hierarchies (Rows, Columns, Data)
-                                if (op.rows && Array.isArray(op.rows)) {
-                                    op.rows.forEach((r: string) => pivotTable.rowHierarchies.add(pivotTable.hierarchies.getItem(r)));
-                                }
-                                if (op.columns && Array.isArray(op.columns)) {
-                                    op.columns.forEach((c: string) => pivotTable.columnHierarchies.add(pivotTable.hierarchies.getItem(c)));
-                                }
-                                if (op.values && Array.isArray(op.values)) {
-                                    op.values.forEach((v: any) => {
-                                        // v can be string or object { field: string, function: 'Sum' | 'Count' etc }
-                                        const fieldName = typeof v === 'string' ? v : v.field;
-                                        const dataHierarchy = pivotTable.dataHierarchies.add(pivotTable.hierarchies.getItem(fieldName));
-                                        if (typeof v !== 'string' && v.function) {
-                                            dataHierarchy.summarizeBy = v.function; // e.g. Excel.AggregationFunction.sum
-                                        }
-                                    });
-                                }
-                            } catch (e) {
-                                console.error("Failed to create Pivot Table", e);
-                            }
+                            const srcSheet = op.sourceSheet ? context.workbook.worksheets.getItem(op.sourceSheet) : sheet;
+                            const srcRange = srcSheet.getRange(op.sourceAddress);
+                            const dstSheet = op.destinationSheet ? context.workbook.worksheets.getItem(op.destinationSheet) : sheet;
+                            const ptName = op.name || `PT_${Date.now()}`;
+                            dstSheet.pivotTables.add(ptName, srcRange, op.destinationAddress || "A1");
                             break;
 
                         case 'insertRows':
-                            const insertRowRange = sheet.getRange(op.address);
-                            insertRowRange.insert(Excel.InsertShiftDirection.down);
+                            sheet.getRange(op.address).insert((Excel as any).InsertShiftDirection.down);
                             break;
 
                         case 'deleteRows':
-                            const deleteRowRange = sheet.getRange(op.address);
-                            deleteRowRange.delete(Excel.DeleteShiftDirection.up);
+                            sheet.getRange(op.address).delete((Excel as any).DeleteShiftDirection.up);
                             break;
 
                         case 'insertColumns':
-                            const insertColRange = sheet.getRange(op.address);
-                            insertColRange.insert(Excel.InsertShiftDirection.right);
+                            sheet.getRange(op.address).insert((Excel as any).InsertShiftDirection.right);
                             break;
 
                         case 'deleteColumns':
-                            const deleteColRange = sheet.getRange(op.address);
-                            deleteColRange.delete(Excel.DeleteShiftDirection.left);
+                            sheet.getRange(op.address).delete((Excel as any).DeleteShiftDirection.left);
                             break;
 
                         case 'renameWorksheet':
-                            const sheetToRename = context.workbook.worksheets.getItem(op.name || op.oldName);
-                            sheetToRename.name = op.newName;
+                            context.workbook.worksheets.getItem(op.name || op.oldName).name = op.newName;
                             break;
 
                         case 'hideWorksheet':
-                            const sheetToHide = context.workbook.worksheets.getItem(op.name);
-                            sheetToHide.visibility = Excel.SheetVisibility.hidden;
+                            context.workbook.worksheets.getItem(op.name).visibility = Excel.SheetVisibility.hidden;
                             break;
 
                         case 'unhideWorksheet':
-                            const sheetToUnhide = context.workbook.worksheets.getItem(op.name);
-                            sheetToUnhide.visibility = Excel.SheetVisibility.visible;
+                            context.workbook.worksheets.getItem(op.name).visibility = Excel.SheetVisibility.visible;
                             break;
-
                     }
-                } catch (e) {
-                    console.error(`Failed to execute operation ${op.action} on ${op.address}`, e);
-                }
-            }
 
-            await context.sync();
-        });
+                    await context.sync();
+                });
+            } catch (e: any) {
+                console.error(`Operation failed: ${op.action} on ${op.address}`, e);
+            }
+        }
     }
 }
 
