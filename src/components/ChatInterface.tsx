@@ -129,6 +129,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
             await Excel.run(async (context) => {
                 const sheet = context.workbook.worksheets.getActiveWorksheet();
                 const range = sheet.getUsedRange();
+                sheet.load("name");
                 range.load("values, formulas, address");
                 await context.sync();
 

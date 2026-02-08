@@ -59,7 +59,7 @@ export class ContextBuilder {
             for (const table of tables.items) {
                 metadata.tables.push({
                     name: table.name,
-                    sheet: table.worksheet ? "Unknown" : "Unknown", // Worksheets need separate load usually
+                    sheet: "Unknown",
                     range: "Unknown"
                 });
             }
