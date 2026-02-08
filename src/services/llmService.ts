@@ -233,6 +233,36 @@ export class LLMService {
     }
 
     /**
+     * Get list of available models from OpenRouter
+     */
+    static async getOpenRouterModels(): Promise<{ id: string; name: string }[]> {
+        try {
+            const response = await fetch('https://openrouter.ai/api/v1/models');
+            if (!response.ok) {
+                return OPENROUTER_FREE_MODELS;
+            }
+
+            const data = await response.json();
+            const models = data.data.map((m: any) => ({
+                id: m.id,
+                name: m.name || m.id,
+            }));
+
+            // Sort: Free models first, then alphabetical
+            return models.sort((a: any, b: any) => {
+                const aFree = a.id.includes(':free');
+                const bFree = b.id.includes(':free');
+                if (aFree && !bFree) return -1;
+                if (!aFree && bFree) return 1;
+                return a.name.localeCompare(b.name);
+            });
+        } catch (e) {
+            console.error('Failed to fetch models', e);
+            return OPENROUTER_FREE_MODELS;
+        }
+    }
+
+    /**
      * Test if the API key is valid
      */
     static async testConnection(): Promise<boolean> {

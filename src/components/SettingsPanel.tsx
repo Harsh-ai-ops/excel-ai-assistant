@@ -13,9 +13,14 @@ import {
     MessageBar,
     MessageBarType,
     IconButton,
+    ComboBox,
+    IComboBoxOption,
+    IComboBox,
+    Spinner,
+    SpinnerSize,
 } from '@fluentui/react';
 import { StorageService, LLMProvider } from '../services/storageService';
-import { OPENROUTER_FREE_MODELS } from '../services/llmService';
+import { OPENROUTER_FREE_MODELS, LLMService } from '../services/llmService';
 
 interface SettingsPanelProps {
     isOpen: boolean;
@@ -28,16 +33,13 @@ const providerOptions: IDropdownOption[] = [
     { key: 'huggingface', text: 'HuggingFace (FREE)' },
 ];
 
-const modelOptions: IDropdownOption[] = OPENROUTER_FREE_MODELS.map((m) => ({
-    key: m.id,
-    text: m.name,
-}));
-
 const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
     const [apiKey, setApiKey] = useState('');
     const [provider, setProvider] = useState<LLMProvider>('openrouter');
     const [model, setModel] = useState(OPENROUTER_FREE_MODELS[0].id);
     const [saved, setSaved] = useState(false);
+    const [availableModels, setAvailableModels] = useState<{ id: string; name: string }[]>(OPENROUTER_FREE_MODELS);
+    const [isLoadingModels, setIsLoadingModels] = useState(false);
 
     // Load settings on mount
     useEffect(() => {
@@ -47,8 +49,25 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
             setProvider(settings.provider);
             setModel(settings.model);
             setSaved(false);
+
+            // Initial fetch if we have models
+            if (settings.provider === 'openrouter') {
+                fetchModels();
+            }
         }
     }, [isOpen]);
+
+    const fetchModels = async () => {
+        setIsLoadingModels(true);
+        try {
+            const models = await LLMService.getOpenRouterModels();
+            setAvailableModels(models);
+        } catch (error) {
+            console.error('Error fetching models:', error);
+        } finally {
+            setIsLoadingModels(false);
+        }
+    };
 
     const handleSave = () => {
         if (apiKey.trim()) {
@@ -96,6 +115,11 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
 
     const providerInfo = getProviderInfo();
 
+    const modelOptions: IComboBoxOption[] = availableModels.map((m) => ({
+        key: m.id,
+        text: m.name,
+    }));
+
     return (
         <Modal
             isOpen={isOpen}
@@ -127,12 +151,33 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({ isOpen, onClose }) => {
                 />
 
                 {provider === 'openrouter' && (
-                    <Dropdown
-                        label="Model"
-                        selectedKey={model}
-                        options={modelOptions}
-                        onChange={(_, option) => setModel(option?.key as string)}
-                    />
+                    <Stack tokens={{ childrenGap: 5 }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+                            <ComboBox
+                                label="Model"
+                                selectedKey={model}
+                                options={modelOptions}
+                                onChange={(_: React.FormEvent<IComboBox>, option?: IComboBoxOption, index?: number, value?: string) => {
+                                    if (option) {
+                                        setModel(option.key as string);
+                                    } else if (value) {
+                                        setModel(value);
+                                    }
+                                }}
+                                allowFreeform
+                                autoComplete="on"
+                                styles={{ root: { flex: 1 } }}
+                                placeholder="Select or type a model ID..."
+                            />
+                            <IconButton
+                                iconProps={{ iconName: 'Refresh' }}
+                                title="Refresh Models"
+                                onClick={fetchModels}
+                                disabled={isLoadingModels}
+                            />
+                        </div>
+                        {isLoadingModels && <Spinner size={SpinnerSize.small} label="Loading models..." />}
+                    </Stack>
                 )}
 
                 <Stack tokens={{ childrenGap: 8 }}>
