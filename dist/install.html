@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel AI Assistant - Free Installation</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #323130;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #605e5c;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            background: #f3f2f1;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid #0078d4;
+        }
+
+        .step h3 {
+            margin: 0 0 10px 0;
+            color: #323130;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-number {
+            background: #0078d4;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .step p {
+            color: #605e5c;
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+
+        .step ol,
+        .step ul {
+            margin: 10px 0;
+            padding-left: 20px;
+            color: #605e5c;
+        }
+
+        .step li {
+            padding: 4px 0;
+        }
+
+        .button {
+            background: #0078d4;
+            color: white;
+            padding: 14px 28px;
+            text-decoration: none;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 10px 5px 10px 0;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .button:hover {
+            background: #106ebe;
+        }
+
+        .button-secondary {
+            background: #605e5c;
+        }
+
+        .button-secondary:hover {
+            background: #323130;
+        }
+
+        .checkmark {
+            color: #107c10;
+            font-weight: 600;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .feature {
+            background: #deecf9;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .feature-title {
+            font-weight: 600;
+            color: #323130;
+        }
+
+        .cost-badge {
+            background: linear-gradient(135deg, #107c10, #0b5c0b);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 10px 0;
+        }
+
+        .note {
+            background: #fff4ce;
+            border: 1px solid #ffb900;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .note-title {
+            font-weight: 600;
+            color: #323130;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #a19f9d;
+            font-size: 12px;
+        }
+
+        code {
+            background: #f3f2f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', monospace;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>📊 Excel AI Assistant</h1>
+        <p class="subtitle">Free AI-powered Excel assistant - Analyze data, create formulas, and get insights</p>
+
+        <div class="cost-badge">💰 100% FREE Forever</div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">🤖</div>
+                <div class="feature-title">AI-Powered</div>
+                <div>Uses free LLM models</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📈</div>
+                <div class="feature-title">Data Analysis</div>
+                <div>Understand your data</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">📝</div>
+                <div class="feature-title">Formula Help</div>
+                <div>Create Excel formulas</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🌍</div>
+                <div class="feature-title">Works Anywhere</div>
+                <div>Global access, no server</div>
+            </div>
+        </div>
+
+        <h2>🚀 Quick Install (3 minutes)</h2>
+
+        <div class="step">
+            <h3><span class="step-number">1</span> Download the Add-in</h3>
+            <p>Download the manifest file that tells Excel how to load the add-in:</p>
+            <a href="manifest.xml" download class="button">📥 Download manifest.xml</a>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">2</span> Install in Excel</h3>
+
+            <p><strong>Excel Desktop (Windows/Mac):</strong></p>
+            <ol>
+                <li>Open Excel</li>
+                <li>Go to: <strong>Insert</strong> → <strong>My Add-ins</strong> (or <strong>Office Add-ins</strong>)
+                </li>
+                <li>Click <strong>Upload My Add-in</strong> (or <strong>Manage My Add-ins</strong>)</li>
+                <li>Click <strong>Browse</strong> and select the <code>manifest.xml</code> file you downloaded</li>
+                <li>Click <strong>Upload</strong></li>
+            </ol>
+
+            <p><strong>Excel Online:</strong></p>
+            <ol>
+                <li>Open <a href="https://office.com" target="_blank">office.com</a> and sign in</li>
+                <li>Open any Excel workbook</li>
+                <li>Go to: <strong>Insert</strong> → <strong>Office Add-ins</strong></li>
+                <li>Click <strong>Upload My Add-in</strong></li>
+                <li>Upload the <code>manifest.xml</code> file</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">3</span> Get Your FREE API Key</h3>
+            <p>You need a free API key to power the AI. Choose one provider:</p>
+
+            <a href="https://openrouter.ai/keys" target="_blank" class="button">🔑 Get OpenRouter Key (Recommended)</a>
+            <a href="https://makersuite.google.com/app/apikey" target="_blank" class="button button-secondary">🔑 Get
+                Gemini Key</a>
+
+            <p class="checkmark">✅ No credit card required</p>
+            <p class="checkmark">✅ Free forever (rate-limited)</p>
+            <p class="checkmark">✅ Takes 30 seconds</p>
+        </div>
+
+        <div class="step">
+            <h3><span class="step-number">4</span> Start Using!</h3>
+            <ol>
+                <li>Click the <strong>AI Assistant</strong> button in the Excel ribbon (Home tab)</li>
+                <li>Click the ⚙️ Settings icon</li>
+                <li>Paste your API key</li>
+                <li>Start chatting with your Excel data! 🎉</li>
+            </ol>
+        </div>
+
+        <div class="note">
+            <div class="note-title">💡 Tips</div>
+            <ul>
+                <li>The add-in can read all your sheet data to provide context-aware answers</li>
+                <li>Ask questions like: "Analyze column B" or "Create a formula to sum sales"</li>
+                <li>Your API key is stored locally in your browser - never sent to our servers</li>
+            </ul>
+        </div>
+
+        <h2>❓ Troubleshooting</h2>
+
+        <div class="step">
+            <h3>Add-in won't load?</h3>
+            <ul>
+                <li>Make sure you're using a modern version of Excel (2016 or later)</li>
+                <li>Try clearing Excel's cache: Close Excel, delete
+                    <code>%LOCALAPPDATA%\Microsoft\Office\16.0\Wef\</code></li>
+                <li>For Excel Online, try a different browser (Chrome, Edge, Firefox)</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>API calls failing?</h3>
+            <ul>
+                <li>Double-check your API key is correct (copy/paste carefully)</li>
+                <li>OpenRouter keys start with <code>sk-or-v1-</code></li>
+                <li>Try a different model in Settings</li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>Excel AI Assistant - 100% Free & Open Source</p>
+            <p>Works with Excel for Windows, Mac, and Web</p>
+        </footer>
+    </div>
+</body>
+
+</html>
