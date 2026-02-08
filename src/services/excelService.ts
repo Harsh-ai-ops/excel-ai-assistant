@@ -367,6 +367,41 @@ export class ExcelService {
                             }
                             break;
 
+                        case 'insertRows':
+                            const insertRowRange = sheet.getRange(op.address);
+                            insertRowRange.insert(Excel.InsertShiftDirection.down);
+                            break;
+
+                        case 'deleteRows':
+                            const deleteRowRange = sheet.getRange(op.address);
+                            deleteRowRange.delete(Excel.DeleteShiftDirection.up);
+                            break;
+
+                        case 'insertColumns':
+                            const insertColRange = sheet.getRange(op.address);
+                            insertColRange.insert(Excel.InsertShiftDirection.right);
+                            break;
+
+                        case 'deleteColumns':
+                            const deleteColRange = sheet.getRange(op.address);
+                            deleteColRange.delete(Excel.DeleteShiftDirection.left);
+                            break;
+
+                        case 'renameWorksheet':
+                            const sheetToRename = context.workbook.worksheets.getItem(op.name || op.oldName);
+                            sheetToRename.name = op.newName;
+                            break;
+
+                        case 'hideWorksheet':
+                            const sheetToHide = context.workbook.worksheets.getItem(op.name);
+                            sheetToHide.visibility = Excel.SheetVisibility.hidden;
+                            break;
+
+                        case 'unhideWorksheet':
+                            const sheetToUnhide = context.workbook.worksheets.getItem(op.name);
+                            sheetToUnhide.visibility = Excel.SheetVisibility.visible;
+                            break;
+
                     }
                 } catch (e) {
                     console.error(`Failed to execute operation ${op.action} on ${op.address}`, e);

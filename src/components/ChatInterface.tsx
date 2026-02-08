@@ -1,4 +1,5 @@
 import * as React from 'react';
+/* global Excel */
 import { useState, useRef, useEffect } from 'react';
 import {
     Stack,
@@ -13,6 +14,7 @@ import {
 } from '@fluentui/react';
 import { LLMService, ChatMessage } from '../services/llmService';
 import { ExcelService } from '../services/excelService';
+import { ContextBuilder } from '../services/contextBuilder';
 import { StorageService } from '../services/storageService';
 
 interface Message {
@@ -119,20 +121,26 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
         setPendingActions([]); // Clear previous pending actions
 
         try {
-            // Get Excel context
-            const excelContext = await ExcelService.buildContextForLLM();
+            // Get holistic workbook context
+            const workbookMetadata = await ContextBuilder.getWorkbookMetadata();
 
-            // Build message history for API
-            const chatHistory: ChatMessage[] = messages.slice(-10).map((m) => ({
-                role: m.role,
-                content: m.content,
-            }));
-            chatHistory.push({ role: 'user', content: userMessage.content });
+            // Get active sheet data (existing logic)
+            let excelContext = "";
+            await Excel.run(async (context) => {
+                const sheet = context.workbook.worksheets.getActiveWorksheet();
+                const range = sheet.getUsedRange();
+                range.load("values, formulas, address");
+                await context.sync();
+
+                excelContext = ContextBuilder.buildContextString(workbookMetadata,
+                    `Sheet: ${sheet.name}\nRange: ${range.address}\nData: ${JSON.stringify(range.values)}\nFormulas: ${JSON.stringify(range.formulas)}`);
+            });
 
             // Call LLM
-            const response = await LLMService.chat(chatHistory, excelContext);
-
-            // Handle Tool Calls
+            const response = await LLMService.chat(
+                [...messages, userMessage],
+                excelContext
+            );
             let assistantContent = response.text || '';
             const toolCalls = response.toolCalls;
 
@@ -199,6 +207,41 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
                 <br />
             </React.Fragment>
         ));
+    };
+
+    const handleCitationClick = async (address: string) => {
+        try {
+            await Excel.run(async (context) => {
+                const sheet = context.workbook.worksheets.getActiveWorksheet();
+                const range = sheet.getRange(address);
+                range.select();
+                await context.sync();
+            });
+        } catch (error) {
+            console.error("Failed to navigate to citation", error);
+        }
+    };
+
+    // Helper to render message with clickable citations
+    const renderMessageContent = (content: string) => {
+        // Find patterns like [Cell: A1] or [Cell: Sheet1!B2]
+        const parts = (content || '').split(/(\[Cell: [^\]]+\])/);
+        return parts.map((part, i) => {
+            const match = part.match(/\[Cell: ([^\]]+)\]/);
+            if (match) {
+                const address = match[1];
+                return (
+                    <span
+                        key={i}
+                        onClick={() => handleCitationClick(address)}
+                        style={{ color: '#0078d4', textDecoration: 'underline', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                        {part}
+                    </span>
+                );
+            }
+            return <span key={i}>{part}</span>;
+        });
     };
 
     return (
@@ -302,7 +345,15 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ onOpenSettings }) => {
                                     })}
                                 </span>
                             </div>
-                            <div className="message-content">{formatMessage(msg.content)}</div>
+                            <div
+                                className={`message-bubble ${msg.role}`}
+                                style={{
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word'
+                                }}
+                            >
+                                {renderMessageContent(msg.content)}
+                            </div>
                         </div>
                     ))
                 )}

@@ -39,39 +39,31 @@ const EXCEL_TOOLS = [
                                     enum: [
                                         "setCellValue", "setFormula", "format", "createTable", "createChart",
                                         "createWorksheet", "activateWorksheet", "deleteWorksheet",
-                                        "sortRange", "filterRange", "autoFit", "createPivotTable"
+                                        "sortRange", "filterRange", "autoFit", "createPivotTable",
+                                        "insertRows", "deleteRows", "insertColumns", "deleteColumns",
+                                        "renameWorksheet", "hideWorksheet", "unhideWorksheet"
                                     ],
                                     description: "The action to perform"
                                 },
                                 address: {
                                     type: "string",
-                                    description: "Target cell/range address (e.g. 'A1', 'Sheet1!B2:C5')"
+                                    description: "Target cell/range address (e.g. 'A1', 'C:C', '5:5')"
                                 },
-                                value: {
-                                    type: "string",
-                                    description: "Value to write (for setCellValue)"
-                                },
-                                formula: {
-                                    type: "string",
-                                    description: "Formula to write (for setFormula), must start with ="
-                                },
+                                value: { type: "string" },
+                                formula: { type: "string" },
                                 format: {
                                     type: "object",
-                                    description: "Format options",
                                     properties: {
                                         bold: { type: "boolean" },
                                         fill: { type: "string" },
-                                        color: { type: "string" }
+                                        color: { type: "string" },
+                                        fontSize: { type: "number" },
+                                        horizontalAlignment: { type: "string", enum: ["Left", "Center", "Right"] }
                                     }
                                 },
-                                name: {
-                                    type: "string",
-                                    description: "Name for table or chart"
-                                },
-                                title: {
-                                    type: "string",
-                                    description: "Title for chart"
-                                },
+                                name: { type: "string" },
+                                newName: { type: "string" },
+                                title: { type: "string" },
                                 // Pivot Table & Advanced Props
                                 sourceSheet: { type: "string" },
                                 sourceAddress: { type: "string" },
@@ -90,7 +82,7 @@ const EXCEL_TOOLS = [
                                         required: ["field"]
                                     }
                                 },
-                                key: { type: "integer", description: "Sort column index (0-based)" },
+                                key: { type: "integer" },
                                 ascending: { type: "boolean" }
                             },
                             required: ["action"]
@@ -129,7 +121,8 @@ CRITICAL EXPERT GUIDELINES:
 
 3. DATA INTERNALS & BEST PRACTICES:
    - Use exact Excel formula syntax.
-   - Reference cells explicitly (e.g., "See result in B15").
+   - CITATIONS: Always cite cells using the format [Cell: Address] (e.g., [Cell: B2] or [Cell: Sheet1!A1:C10]). 
+   - Reference cells explicitly (e.g., "See result in [Cell: B15]").
    - Use Excel Tables (ListObject) for structured data to enable easy filtering.
    - Create Pivot Tables for complex aggregations.
 
