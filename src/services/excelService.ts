@@ -290,6 +290,83 @@ export class ExcelService {
                             const chart = sheet.charts.add(op.chartType || 'ColumnClustered', chartSourceRange, 'Auto');
                             if (op.title) chart.title.text = op.title;
                             break;
+
+                        case 'createWorksheet':
+                            try {
+                                const newSheet = context.workbook.worksheets.add(op.name);
+                                if (op.activate) newSheet.activate();
+                            } catch (e) {
+                                console.warn(`Sheet ${op.name} might already exist`);
+                            }
+                            break;
+
+                        case 'activateWorksheet':
+                            const sheetToActivate = context.workbook.worksheets.getItem(op.name);
+                            sheetToActivate.activate();
+                            break;
+
+                        case 'deleteWorksheet':
+                            const sheetToDelete = context.workbook.worksheets.getItem(op.name);
+                            sheetToDelete.delete();
+                            break;
+
+                        case 'autoFit':
+                            // Auto-fit columns in range or used range
+                            const autoFitRange = op.address ? sheet.getRange(op.address) : sheet.getUsedRange();
+                            autoFitRange.getEntireColumn().format.autofitColumns();
+                            break;
+
+                        case 'sortRange':
+                            const sortRange = sheet.getRange(op.address);
+                            const sortFields = [
+                                {
+                                    key: op.key || 0, // Column index (0-based) relative to range, or 0 if not specified
+                                    ascending: op.ascending !== false // Default true
+                                }
+                            ];
+                            sortRange.sort.apply(sortFields, op.matchCase || false, op.hasHeaders || true, op.orientation || "Rows");
+                            break;
+
+                        case 'filterRange':
+                            // Apply auto-filter to a range
+                            const filterRange = sheet.getRange(op.address);
+                            sheet.autoFilter.apply(filterRange);
+                            break;
+
+                        case 'createPivotTable':
+                            try {
+                                const sourceSheet = op.sourceSheet ? context.workbook.worksheets.getItem(op.sourceSheet) : sheet;
+                                const sourceRange = sourceSheet.getRange(op.sourceAddress);
+
+                                const destSheet = op.destinationSheet ? context.workbook.worksheets.getItem(op.destinationSheet) : sheet;
+                                // Add Pivot Table - Needs Name, Source, and Destination
+                                const pivotTableName = op.name || `PivotTable_${Date.now()}`;
+                                const pivotTable = destSheet.pivotTables.add(pivotTableName, sourceRange, op.destinationAddress || "A1");
+
+                                if (op.name) pivotTable.name = op.name;
+
+                                // Configure Hierarchies (Rows, Columns, Data)
+                                if (op.rows && Array.isArray(op.rows)) {
+                                    op.rows.forEach((r: string) => pivotTable.rowHierarchies.add(pivotTable.hierarchies.getItem(r)));
+                                }
+                                if (op.columns && Array.isArray(op.columns)) {
+                                    op.columns.forEach((c: string) => pivotTable.columnHierarchies.add(pivotTable.hierarchies.getItem(c)));
+                                }
+                                if (op.values && Array.isArray(op.values)) {
+                                    op.values.forEach((v: any) => {
+                                        // v can be string or object { field: string, function: 'Sum' | 'Count' etc }
+                                        const fieldName = typeof v === 'string' ? v : v.field;
+                                        const dataHierarchy = pivotTable.dataHierarchies.add(pivotTable.hierarchies.getItem(fieldName));
+                                        if (typeof v !== 'string' && v.function) {
+                                            dataHierarchy.summarizeBy = v.function; // e.g. Excel.AggregationFunction.sum
+                                        }
+                                    });
+                                }
+                            } catch (e) {
+                                console.error("Failed to create Pivot Table", e);
+                            }
+                            break;
+
                     }
                 } catch (e) {
                     console.error(`Failed to execute operation ${op.action} on ${op.address}`, e);
