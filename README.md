@@ -18,7 +18,7 @@ A free, AI-powered Excel add-in that helps you analyze data, create formulas, an
 
 ## Live Demo
 
-Visit the [Installation Page](https://YOUR_USERNAME.github.io/excel-ai-assistant/install.html) for step-by-step instructions.
+Visit the [Installation Page](https://Harsh-ai-ops.github.io/excel-ai-assistant/install.html) for step-by-step instructions.
 
 ## Technology
 
